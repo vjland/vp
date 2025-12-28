@@ -51,6 +51,7 @@ const CHIP_VALUES = [10, 50, 100, 500, 1000];
 
 // --- Initialization ---
 function init() {
+    console.log("Baccarat Pro Trainer Initializing...");
     setupBettingAreas();
     setupChips();
     attachEventListeners();
@@ -99,15 +100,17 @@ function toggleMode() {
     elements.modeText.textContent = dealMode.toUpperCase();
     
     if (dealMode === 'auto') {
-        elements.modeToggle.classList.replace('bg-orange-600/20', 'bg-blue-600/20');
-        elements.modeToggle.classList.replace('border-orange-500/50', 'border-blue-500/50');
-        elements.modeIndicator.classList.replace('bg-orange-400', 'bg-blue-400');
+        elements.modeToggle.classList.remove('bg-orange-600/20', 'border-orange-500/50');
+        elements.modeToggle.classList.add('bg-blue-600/20', 'border-blue-500/50');
+        elements.modeIndicator.classList.remove('bg-orange-400');
+        elements.modeIndicator.classList.add('bg-blue-400');
         elements.timerContainer.classList.remove('hidden');
         if (gameState === 'betting') startTimer();
     } else {
-        elements.modeToggle.classList.replace('bg-blue-600/20', 'bg-orange-600/20');
-        elements.modeToggle.classList.replace('border-blue-500/50', 'border-orange-500/50');
-        elements.modeIndicator.classList.replace('bg-blue-400', 'bg-orange-400');
+        elements.modeToggle.classList.remove('bg-blue-600/20', 'border-blue-500/50');
+        elements.modeToggle.classList.add('bg-orange-600/20', 'border-orange-500/50');
+        elements.modeIndicator.classList.remove('bg-blue-400');
+        elements.modeIndicator.classList.add('bg-orange-400');
         elements.timerContainer.classList.add('hidden');
         stopTimer();
     }
@@ -180,9 +183,17 @@ function handleDeal(instant = false) {
 // --- Rendering Logic ---
 function render() {
     // Header & Balance
-    elements.balance.textContent = `$${balance.toLocaleString()}`;
-    elements.shoeCount.textContent = `${shoeStats.used}/${shoeStats.total}`;
-    elements.shoeProgress.style.width = `${(shoeStats.used / shoeStats.total) * 100}%`;
+    if (elements.balance) {
+        elements.balance.textContent = `$${balance.toLocaleString()}`;
+    }
+    
+    if (elements.shoeCount) {
+        elements.shoeCount.textContent = `${shoeStats.used}/${shoeStats.total}`;
+    }
+    
+    if (elements.shoeProgress) {
+        elements.shoeProgress.style.width = `${(shoeStats.used / shoeStats.total) * 100}%`;
+    }
 
     // Cards
     renderCards(elements.playerCards, lastResult?.playerCards || []);
@@ -193,10 +204,14 @@ function render() {
     // Result Label
     if (lastResult) {
         elements.resultLabel.textContent = lastResult.winner === Game.Winner.Tie ? 'TIE' : lastResult.winner === Game.Winner.Player ? 'PLAYER' : 'BANKER';
-        elements.resultLabel.className = `text-center px-4 py-2 rounded-lg font-black text-xs md:text-lg transition-all shadow-xl ring-1 ring-white/10 ${
-            lastResult.winner === Game.Winner.Player ? 'bg-blue-600/80 shadow-blue-600/20' : 
-            lastResult.winner === Game.Winner.Banker ? 'bg-red-600/80 shadow-red-600/20' : 'bg-green-600/80 shadow-green-600/20'
-        }`;
+        let baseClasses = "text-center px-4 py-2 rounded-lg font-black text-xs md:text-lg transition-all shadow-xl ring-1 ring-white/10 ";
+        if (lastResult.winner === Game.Winner.Player) {
+            elements.resultLabel.className = baseClasses + "bg-blue-600/80 shadow-blue-600/20";
+        } else if (lastResult.winner === Game.Winner.Banker) {
+            elements.resultLabel.className = baseClasses + "bg-red-600/80 shadow-red-600/20";
+        } else {
+            elements.resultLabel.className = baseClasses + "bg-green-600/80 shadow-green-600/20";
+        }
     } else {
         elements.resultLabel.textContent = '...';
         elements.resultLabel.className = 'text-center px-4 py-2 rounded-lg font-black text-xs md:text-lg transition-all shadow-xl ring-1 ring-white/10 bg-white/5 text-white/20';
@@ -214,6 +229,7 @@ function render() {
 }
 
 function renderCards(container, cards) {
+    if (!container) return;
     container.innerHTML = '';
     if (cards.length === 0) {
         container.innerHTML = '<div class="w-12 h-16 md:w-16 md:h-24 bg-white/5 border border-white/10 rounded-md flex items-center justify-center text-white/20">?</div>';
@@ -222,7 +238,7 @@ function renderCards(container, cards) {
     cards.forEach(card => {
         const isRed = card.suit === Game.Suit.Hearts || card.suit === Game.Suit.Diamonds;
         const cardEl = document.createElement('div');
-        cardEl.className = 'w-12 h-16 md:w-16 md:h-24 bg-white rounded-md shadow-xl flex flex-col p-1 transition-all transform';
+        cardEl.className = 'w-12 h-16 md:w-16 md:h-24 bg-white rounded-md shadow-xl flex flex-col p-1 transition-all transform hover:-translate-y-1';
         cardEl.innerHTML = `
             <div class="text-[10px] md:text-sm font-bold leading-none ${isRed ? 'text-red-600' : 'text-black'}">${card.rank}</div>
             <div class="flex-grow flex items-center justify-center text-lg md:text-2xl ${isRed ? 'text-red-600' : 'text-black'}">${card.suit}</div>
@@ -234,22 +250,23 @@ function renderCards(container, cards) {
 
 function setupBettingAreas() {
     const areas = [
-        { id: Game.BetTarget.PlayerPair, label: 'PLAYER PAIR', odds: '11:1', color: 'blue-900/40', text: 'blue-300' },
-        { id: Game.BetTarget.Player, label: 'PLAYER', odds: '1:1', color: 'blue-600/80', text: 'white', large: true },
-        { id: Game.BetTarget.Tie, label: 'TIE', odds: '8:1', color: 'green-700/80', text: 'white', large: true },
-        { id: Game.BetTarget.Banker, label: 'BANKER', odds: '0.95:1', color: 'red-600/80', text: 'white', large: true },
-        { id: Game.BetTarget.BankerPair, label: 'BANKER PAIR', odds: '11:1', color: 'red-900/40', text: 'red-300' },
+        { id: Game.BetTarget.PlayerPair, label: 'PLAYER PAIR', odds: '11:1', bgClass: 'bg-blue-900/40', textClass: 'text-blue-300', large: false },
+        { id: Game.BetTarget.Player, label: 'PLAYER', odds: '1:1', bgClass: 'bg-blue-600/80', textClass: 'text-white', large: true },
+        { id: Game.BetTarget.Tie, label: 'TIE', odds: '8:1', bgClass: 'bg-green-700/80', textClass: 'text-white', large: true },
+        { id: Game.BetTarget.Banker, label: 'BANKER', odds: '0.95:1', bgClass: 'bg-red-600/80', textClass: 'text-white', large: true },
+        { id: Game.BetTarget.BankerPair, label: 'BANKER PAIR', odds: '11:1', bgClass: 'bg-red-900/40', textClass: 'text-red-300', large: false },
     ];
 
+    if (!elements.bettingAreas) return;
     elements.bettingAreas.innerHTML = '';
     areas.forEach(area => {
         const btn = document.createElement('button');
-        btn.id = `bet-${area.id.replace(' ', '-')}`;
-        btn.className = `relative rounded-lg border-2 border-white/10 flex flex-col items-center justify-center transition-all active:scale-95 shadow-lg bg-${area.color}`;
+        btn.id = `bet-${area.id.replace(/\s+/g, '-')}`;
+        btn.className = `relative rounded-lg border-2 border-white/10 flex flex-col items-center justify-center transition-all active:scale-95 shadow-lg ${area.bgClass}`;
         btn.innerHTML = `
-            <span class="${area.large ? 'text-sm font-black' : 'text-[10px] font-bold'} text-${area.text} tracking-widest">${area.label}</span>
+            <span class="${area.large ? 'text-sm font-black' : 'text-[10px] font-bold'} ${area.textClass} tracking-widest uppercase">${area.label}</span>
             <span class="${area.large ? 'text-xl font-black' : 'text-sm font-bold'} text-white">${area.odds}</span>
-            <div id="chip-on-${area.id.replace(' ', '-')}" class="hidden absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black px-2 py-0.5 rounded-full text-xs font-bold border-2 border-white shadow-md">$0</div>
+            <div id="chip-on-${area.id.replace(/\s+/g, '-')}" class="hidden absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black px-2 py-0.5 rounded-full text-xs font-bold border-2 border-white shadow-md z-30">$0</div>
         `;
         btn.addEventListener('click', () => placeBet(area.id));
         elements.bettingAreas.appendChild(btn);
@@ -267,31 +284,35 @@ function placeBet(target) {
 
 function updateBettingAreas() {
     Object.values(Game.BetTarget).forEach(target => {
-        const chipEl = document.getElementById(`chip-on-${target.replace(' ', '-')}`);
-        if (currentBets[target]) {
-            chipEl.textContent = `$${currentBets[target]}`;
-            chipEl.classList.remove('hidden');
-        } else {
-            chipEl.classList.add('hidden');
+        const safeId = target.replace(/\s+/g, '-');
+        const chipEl = document.getElementById(`chip-on-${safeId}`);
+        if (chipEl) {
+            if (currentBets[target]) {
+                chipEl.textContent = `$${currentBets[target]}`;
+                chipEl.classList.remove('hidden');
+            } else {
+                chipEl.classList.add('hidden');
+            }
         }
     });
 }
 
 function setupChips() {
+    if (!elements.chipSelection) return;
     elements.chipSelection.innerHTML = '';
     CHIP_VALUES.forEach(val => {
         const chip = document.createElement('button');
         chip.id = `chip-${val}`;
-        chip.className = `w-12 h-12 md:w-14 md:h-14 rounded-full border-4 flex items-center justify-center font-bold text-sm transition-transform hover:scale-110 shadow-xl border-white/20`;
+        let baseClass = "w-10 h-10 md:w-14 md:h-14 rounded-full border-4 flex items-center justify-center font-black text-[10px] md:text-sm transition-all hover:scale-110 shadow-xl ";
         
         let colorClass = '';
-        if (val === 10) colorClass = 'bg-white text-black';
-        else if (val === 50) colorClass = 'bg-red-600';
-        else if (val === 100) colorClass = 'bg-black text-white';
-        else if (val === 500) colorClass = 'bg-purple-600';
-        else if (val === 1000) colorClass = 'bg-orange-600';
+        if (val === 10) colorClass = 'bg-white text-black border-neutral-300';
+        else if (val === 50) colorClass = 'bg-red-600 text-white border-red-400';
+        else if (val === 100) colorClass = 'bg-black text-white border-neutral-700';
+        else if (val === 500) colorClass = 'bg-purple-600 text-white border-purple-400';
+        else if (val === 1000) colorClass = 'bg-orange-600 text-white border-orange-400';
         
-        chip.className += ` ${colorClass}`;
+        chip.className = baseClass + colorClass;
         chip.textContent = val;
         chip.addEventListener('click', () => {
             selectedChip = val;
@@ -305,10 +326,19 @@ function setupChips() {
 function updateChips() {
     CHIP_VALUES.forEach(val => {
         const chip = document.getElementById(`chip-${val}`);
-        if (selectedChip === val) {
-            chip.classList.add('scale-110', 'border-yellow-400', 'ring-4', 'ring-yellow-400/20');
-        } else {
-            chip.classList.remove('scale-110', 'border-yellow-400', 'ring-4', 'ring-yellow-400/20');
+        if (chip) {
+            if (selectedChip === val) {
+                chip.classList.add('scale-110', 'ring-4', 'ring-yellow-400/40', 'z-10');
+                chip.style.borderColor = "#facc15"; // yellow-400
+            } else {
+                chip.classList.remove('scale-110', 'ring-4', 'ring-yellow-400/40', 'z-10');
+                // Restore original border color based on value
+                if (val === 10) chip.style.borderColor = "#d4d4d4";
+                else if (val === 50) chip.style.borderColor = "#f87171";
+                else if (val === 100) chip.style.borderColor = "#404040";
+                else if (val === 500) chip.style.borderColor = "#c084fc";
+                else if (val === 1000) chip.style.borderColor = "#fb923c";
+            }
         }
     });
 }
@@ -318,60 +348,61 @@ function renderRoadmaps() {
     const { matrix: bigMatrix, path } = Game.generateBigRoad(history);
     
     // Bead Plate
-    renderGrid(elements.beadPlate, 12, 'w-5 h-5 md:w-6 md:h-6', (r, c) => {
-        const index = c * 6 + r;
-        const res = history[index];
-        if (!res) return '';
-        const color = res.winner === Game.Winner.Banker ? 'bg-red-600' : res.winner === Game.Winner.Player ? 'bg-blue-600' : 'bg-green-600';
-        const label = res.winner === Game.Winner.Banker ? '庄' : res.winner === Game.Winner.Player ? '闲' : '和';
-        return `
-            <div class="w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-[8px] md:text-[10px] font-bold text-white shadow-sm ${color}">
-                ${label}
-                ${res.isPairBanker ? '<div class="absolute top-0 right-0 w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-red-400 border border-white"></div>' : ''}
-                ${res.isPairPlayer ? '<div class="absolute bottom-0 left-0 w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-blue-400 border border-white"></div>' : ''}
-            </div>
-        `;
-    });
+    if (elements.beadPlate) {
+        renderGrid(elements.beadPlate, 12, 'w-5 h-5 md:w-6 md:h-6', (r, c) => {
+            const index = c * 6 + r;
+            const res = history[index];
+            if (!res) return '';
+            const color = res.winner === Game.Winner.Banker ? 'bg-red-600' : res.winner === Game.Winner.Player ? 'bg-blue-600' : 'bg-green-600';
+            const label = res.winner === Game.Winner.Banker ? '庄' : res.winner === Game.Winner.Player ? '闲' : '和';
+            return `
+                <div class="w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-[8px] md:text-[10px] font-bold text-white shadow-sm ${color}">
+                    ${label}
+                    ${res.isPairBanker ? '<div class="absolute top-0 right-0 w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-red-400 border border-white"></div>' : ''}
+                    ${res.isPairPlayer ? '<div class="absolute bottom-0 left-0 w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-blue-400 border border-white"></div>' : ''}
+                </div>
+            `;
+        });
+    }
 
     // Big Road
-    renderGrid(elements.bigRoad, 100, 'w-4 h-4 md:w-5 md:h-5', (r, c) => {
-        const cell = bigMatrix[r][c];
-        if (!cell) return '';
-        const border = cell.winner === Game.Winner.Banker ? 'border-red-500' : cell.winner === Game.Winner.Player ? 'border-blue-500' : 'border-green-500';
-        return `
-            <div class="w-3 h-3 md:w-4 md:h-4 rounded-full border-[1.5px] flex items-center justify-center relative ${border}">
-                ${cell.ties > 0 ? '<div class="absolute w-full h-[1.5px] bg-green-500 rotate-45 pointer-events-none opacity-80"></div>' : ''}
-                ${cell.ties > 1 ? `<span class="text-[7px] font-bold text-green-500 z-10 leading-none">${cell.ties}</span>` : ''}
-            </div>
-        `;
-    });
+    if (elements.bigRoad) {
+        renderGrid(elements.bigRoad, 100, 'w-4 h-4 md:w-5 md:h-5', (r, c) => {
+            const cell = bigMatrix[r][c];
+            if (!cell) return '';
+            const border = cell.winner === Game.Winner.Banker ? 'border-red-500' : cell.winner === Game.Winner.Player ? 'border-blue-500' : 'border-green-500';
+            return `
+                <div class="w-3 h-3 md:w-4 md:h-4 rounded-full border-[1.5px] flex items-center justify-center relative ${border}">
+                    ${cell.ties > 0 ? '<div class="absolute w-full h-[1.5px] bg-green-500 rotate-45 pointer-events-none opacity-80"></div>' : ''}
+                    ${cell.ties > 1 ? `<span class="text-[7px] font-bold text-green-500 z-10 leading-none">${cell.ties}</span>` : ''}
+                </div>
+            `;
+        });
+    }
 
-    // Big Eye Boy
+    // Derived Roads
     const bebMatrix = Game.generateDerivedRoad(bigMatrix, path, 1);
-    renderGrid(elements.bigEyeBoy, 60, 'w-3 h-3 md:w-3.5 md:h-3.5', (r, c) => {
-        const color = bebMatrix[r][c];
-        if (!color) return '';
-        return `<div class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full border-[1.5px] ${color === 'red' ? 'border-red-500' : 'border-blue-500'}"></div>`;
-    });
+    if (elements.bigEyeBoy) renderDerivedGrid(elements.bigEyeBoy, bebMatrix, 60, 'beb');
 
-    // Small Road
     const smMatrix = Game.generateDerivedRoad(bigMatrix, path, 2);
-    renderGrid(elements.smallRoad, 60, 'w-3 h-3 md:w-3.5 md:h-3.5', (r, c) => {
-        const color = smMatrix[r][c];
-        if (!color) return '';
-        return `<div class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${color === 'red' ? 'bg-red-500' : 'bg-blue-500'}"></div>`;
-    });
+    if (elements.smallRoad) renderDerivedGrid(elements.smallRoad, smMatrix, 60, 'sm');
 
-    // Cockroach Road
     const crMatrix = Game.generateDerivedRoad(bigMatrix, path, 3);
-    renderGrid(elements.cockroachRoad, 60, 'w-3 h-3 md:w-3.5 md:h-3.5', (r, c) => {
-        const color = crMatrix[r][c];
+    if (elements.cockroachRoad) renderDerivedGrid(elements.cockroachRoad, crMatrix, 60, 'cr');
+}
+
+function renderDerivedGrid(container, matrix, cols, type) {
+    renderGrid(container, cols, 'w-3 h-3 md:w-3.5 md:h-3.5', (r, c) => {
+        const color = matrix[r][c];
         if (!color) return '';
+        if (type === 'beb') return `<div class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full border-[1.5px] ${color === 'red' ? 'border-red-500' : 'border-blue-500'}"></div>`;
+        if (type === 'sm') return `<div class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${color === 'red' ? 'bg-red-500' : 'bg-blue-500'}"></div>`;
         return `<div class="w-[1.5px] h-[70%] rotate-45 ${color === 'red' ? 'bg-red-500' : 'bg-blue-500'}"></div>`;
     });
 }
 
 function renderGrid(container, cols, cellSize, cellRenderer) {
+    if (!container) return;
     container.innerHTML = '';
     for (let c = 0; c < cols; c++) {
         for (let r = 0; r < 6; r++) {
@@ -384,4 +415,8 @@ function renderGrid(container, cols, cellSize, cellRenderer) {
 }
 
 // --- Start ---
-init();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

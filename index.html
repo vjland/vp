@@ -13,7 +13,6 @@
             font-family: 'Inter', sans-serif;
             background-color: #0a0a0a;
             color: #e5e5e5;
-            overflow: hidden;
         }
         .casino-gradient {
             background: radial-gradient(circle at center, #1a4731 0%, #0a1f14 100%);
@@ -41,8 +40,8 @@
         }
     </style>
 </head>
-<body class="min-h-screen casino-gradient">
-    <div id="app" class="h-screen flex flex-col p-2 md:p-4 overflow-hidden relative">
+<body class="min-h-screen casino-gradient overflow-x-hidden">
+    <div id="app" class="min-h-screen flex flex-col p-2 md:p-4 relative max-w-7xl mx-auto w-full">
         <!-- New Shoe Confirmation Modal -->
         <div id="modal-container" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <div class="bg-neutral-900 border border-white/10 p-6 rounded-2xl max-w-sm w-full shadow-2xl">
@@ -61,7 +60,7 @@
         </div>
 
         <!-- Header -->
-        <header class="flex items-center justify-between gap-2 px-2 py-1 mb-2 bg-black/30 rounded-lg border border-white/5 backdrop-blur-sm relative z-10">
+        <header class="flex items-center justify-between gap-2 px-2 py-1 mb-4 bg-black/30 rounded-lg border border-white/5 backdrop-blur-sm relative z-10">
             <div class="flex items-center gap-3">
                 <h1 class="text-xl md:text-2xl font-black italic tracking-tighter uppercase">
                     Baccarat<span class="text-yellow-400">Pro</span>
@@ -93,12 +92,12 @@
         </header>
 
         <!-- Main Gameplay -->
-        <main class="flex-grow flex flex-col gap-4 max-w-7xl mx-auto w-full overflow-hidden">
+        <main class="flex-grow flex flex-col gap-6 w-full mb-4">
             <div class="flex flex-row items-center justify-center gap-2 md:gap-8 px-2 mt-4">
                 <!-- Player Hand -->
                 <div class="flex flex-col items-center gap-1 flex-1">
                     <h2 class="text-blue-400 font-black tracking-widest uppercase text-xs md:text-sm">Player</h2>
-                    <div id="player-cards" class="flex flex-wrap gap-1 p-2 md:p-4 bg-black/40 rounded-xl border border-white/10 w-full justify-center transition-all min-h-[80px] md:min-h-[140px] items-center"></div>
+                    <div id="player-cards" class="flex flex-wrap gap-1 p-2 md:p-4 bg-black/40 rounded-xl border border-white/10 w-full justify-center transition-all min-h-[80px] md:min-h-[140px] items-center shadow-inner"></div>
                     <div class="mt-1 bg-black/80 px-4 py-0.5 rounded-full border border-white/20">
                         <span id="player-score" class="text-lg md:text-2xl font-black text-white">0</span>
                     </div>
@@ -117,7 +116,7 @@
                 <!-- Banker Hand -->
                 <div class="flex flex-col items-center gap-1 flex-1">
                     <h2 class="text-red-400 font-black tracking-widest uppercase text-xs md:text-sm">Banker</h2>
-                    <div id="banker-cards" class="flex flex-wrap gap-1 p-2 md:p-4 bg-black/40 rounded-xl border border-white/10 w-full justify-center transition-all min-h-[80px] md:min-h-[140px] items-center"></div>
+                    <div id="banker-cards" class="flex flex-wrap gap-1 p-2 md:p-4 bg-black/40 rounded-xl border border-white/10 w-full justify-center transition-all min-h-[80px] md:min-h-[140px] items-center shadow-inner"></div>
                     <div class="mt-1 bg-black/80 px-4 py-0.5 rounded-full border border-white/20">
                         <span id="banker-score" class="text-lg md:text-2xl font-black text-white">0</span>
                     </div>
@@ -125,7 +124,7 @@
             </div>
 
             <!-- Roadmaps -->
-            <div id="roadmap-container" class="flex flex-col gap-2 w-full bg-black/60 p-3 rounded-lg border border-white/5 backdrop-blur-md overflow-hidden flex-shrink-0">
+            <div id="roadmap-container" class="flex flex-col gap-2 w-full bg-black/60 p-3 rounded-lg border border-white/5 backdrop-blur-md overflow-hidden flex-shrink-0 shadow-2xl">
                 <div class="flex gap-2 h-36 md:h-40">
                     <div class="flex flex-col flex-grow min-w-0">
                         <h3 class="text-[10px] font-bold text-neutral-500 mb-1 uppercase tracking-widest flex items-center gap-2">
@@ -163,33 +162,35 @@
             </div>
 
             <!-- Betting Controls -->
-            <div class="mt-auto relative">
-                <div id="deal-button-container" class="absolute -top-16 left-1/2 -translate-x-1/2 z-20">
+            <div class="mt-auto relative w-full">
+                <div id="deal-button-container" class="absolute -top-14 left-1/2 -translate-x-1/2 z-20">
                     <button id="deal-btn" class="bg-yellow-500 hover:bg-yellow-400 text-black px-12 py-3 rounded-full font-black text-xl uppercase shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all active:scale-95 border-b-4 border-yellow-700 active:border-b-0 active:translate-y-1">
                         Deal Hand
                     </button>
                 </div>
 
-                <div class="w-full max-w-4xl mx-auto flex flex-col gap-4">
-                    <div id="betting-areas" class="grid grid-cols-5 gap-2 h-32 md:h-40">
+                <div class="w-full mx-auto flex flex-col gap-4">
+                    <div id="betting-areas" class="grid grid-cols-5 gap-2 h-24 md:h-36">
                         <!-- Betting buttons will be populated here -->
                     </div>
 
-                    <div class="flex items-center justify-center gap-4 bg-black/50 p-4 rounded-2xl border border-white/5">
-                        <div class="text-neutral-400 font-bold mr-4 hidden sm:block">SELECT CHIP:</div>
-                        <div id="chip-selection" class="flex gap-2">
-                            <!-- Chips will be populated here -->
+                    <div class="flex items-center justify-between gap-4 bg-black/60 p-4 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md">
+                        <div class="flex items-center gap-4">
+                            <div class="text-neutral-400 font-bold uppercase text-xs tracking-widest hidden sm:block">Chips</div>
+                            <div id="chip-selection" class="flex gap-2">
+                                <!-- Chips will be populated here -->
+                            </div>
                         </div>
-                        <div class="ml-auto flex flex-col items-end">
-                            <span class="text-neutral-500 text-xs font-bold uppercase">Balance</span>
-                            <span id="balance-display" class="text-xl md:text-2xl font-black text-yellow-400">$10,000</span>
+                        <div class="flex flex-col items-end">
+                            <span class="text-neutral-500 text-[10px] font-black uppercase tracking-widest">Bankroll</span>
+                            <span id="balance-display" class="text-xl md:text-3xl font-black text-yellow-400 leading-none">$10,000</span>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
 
-        <footer class="mt-2 text-center text-neutral-600 text-[9px] uppercase font-bold tracking-[0.2em]">
+        <footer class="mt-4 pb-2 text-center text-neutral-600 text-[9px] uppercase font-bold tracking-[0.2em]">
             Training Only • Standard Commission Rules • 8-Deck Shoe
         </footer>
     </div>
