@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>D5 Navigator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base Styles */
+        body { 
+            background-color: #09090b; 
+            color: #e4e4e7; 
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            touch-action: manipulation; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        /* Utility Classes */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Custom Scrollbar for history */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #18181b; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.2s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Chart Tooltip */
+        #chart-tooltip {
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="flex flex-col h-screen overflow-hidden select-none">
+
+    <!-- HEADER -->
+    <header class="flex-none h-16 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 z-30 relative shadow-md">
+        <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold tracking-tight text-zinc-400 hidden sm:block">D5 Navigator</h1>
+        </div>
+
+        <!-- Next Bet Indicator (Centered) -->
+        <div class="flex items-center space-x-3 absolute left-1/2 transform -translate-x-1/2">
+            <span class="text-zinc-500 text-xs font-bold uppercase tracking-wider hidden sm:block">Next:</span>
+            <div id="next-bet-indicator" class="flex items-center justify-center w-10 h-10 rounded-lg border-2 shadow-lg transition-all duration-300 bg-zinc-800/50 border-zinc-700 text-zinc-700">
+                <span id="next-bet-text" class="text-xl font-black">-</span>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button onclick="app.toggleResetModal()" class="p-2 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors" title="Reset Game">
+                <!-- RefreshCw Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+            </button>
+            <button id="menu-btn" onclick="app.togglePanel()" class="p-2 rounded-lg transition-all active:scale-95 text-zinc-500 hover:text-white hover:bg-zinc-800">
+                <!-- Menu Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col overflow-hidden relative">
+        
+        <!-- CHART CONTAINER -->
+        <div class="flex-1 min-h-0 p-4 bg-zinc-950 relative">
+            <div id="chart-container" class="w-full h-full bg-zinc-900/50 rounded-xl border border-zinc-800 p-1 relative overflow-hidden">
+                <!-- Tooltip -->
+                <div id="chart-tooltip" class="absolute z-10 bg-zinc-900 border border-zinc-700 px-3 py-2 rounded shadow-xl text-xs opacity-0 hidden sm:block">
+                    <div id="tooltip-title" class="text-zinc-400 mb-1 font-mono"></div>
+                    <div id="tooltip-value" class="text-white font-bold"></div>
+                </div>
+                <!-- SVG Chart -->
+                <svg id="main-chart" class="w-full h-full" preserveAspectRatio="none">
+                    <!-- Grid and Lines will be injected here by JS -->
+                </svg>
+            </div>
+        </div>
+
+        <!-- HISTORY SECTION -->
+        <div id="history-container" class="flex-none h-40 bg-zinc-900/80 border-t border-zinc-800 flex flex-col transition-all duration-300 ease-in-out shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)] z-20">
+            <!-- History Header -->
+            <div onclick="app.toggleHistory()" class="px-4 py-2 border-b border-zinc-800 bg-zinc-900 flex justify-between items-center cursor-pointer hover:bg-zinc-800/80 transition-colors">
+                <div class="flex items-center space-x-2 text-zinc-400">
+                    <!-- History Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/><path d="M12 7v5l4 2"/></svg>
+                    <span class="text-xs font-bold uppercase tracking-wider">Hand History</span>
+                </div>
+                <button class="text-zinc-500 hover:text-zinc-300">
+                    <!-- Chevron -->
+                    <svg id="history-chevron" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                </button>
+            </div>
+            
+            <!-- History List -->
+            <div id="history-list" class="flex-1 overflow-y-auto p-2 space-y-1 custom-scroll">
+                <div class="text-center text-zinc-600 py-8 text-sm italic">Waiting for first hand...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- KEYPAD OVERLAY -->
+    <div id="keypad-backdrop" class="hidden fixed top-16 right-0 bottom-0 left-0 z-40 bg-black/5" onclick="app.togglePanel()"></div>
+    <div id="keypad-panel" class="hidden fixed top-[4.5rem] right-2 sm:right-4 z-50 w-full max-w-[340px] bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl flex-col overflow-hidden fade-in">
+        <!-- Keypad Header -->
+        <div class="flex justify-between items-center p-3 border-b border-zinc-800 bg-zinc-800/50">
+            <h2 class="text-sm font-bold text-zinc-300 uppercase tracking-wider">Input Result</h2>
+            <button onclick="app.togglePanel()" class="p-1.5 hover:bg-zinc-700 rounded-full transition-colors text-zinc-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Score Display -->
+        <div class="bg-zinc-950 p-4 flex justify-center items-center border-b border-zinc-800">
+            <div class="flex items-center space-x-6 text-3xl font-mono">
+                <div class="flex flex-col items-center">
+                    <span id="p-score" class="font-bold text-zinc-700">0</span>
+                    <span class="text-[10px] text-zinc-600 mt-0.5 uppercase">Player</span>
+                </div>
+                <span class="text-zinc-700">:</span>
+                <div class="flex flex-col items-center">
+                    <span id="b-score" class="font-bold text-zinc-700">0</span>
+                    <span class="text-[10px] text-zinc-600 mt-0.5 uppercase">Banker</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="p-3 grid grid-cols-3 gap-2 bg-zinc-900">
+            <!-- Generate 1-9 -->
+            <button onclick="app.keyPress(1)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">1</button>
+            <button onclick="app.keyPress(2)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">2</button>
+            <button onclick="app.keyPress(3)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">3</button>
+            <button onclick="app.keyPress(4)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">4</button>
+            <button onclick="app.keyPress(5)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">5</button>
+            <button onclick="app.keyPress(6)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">6</button>
+            <button onclick="app.keyPress(7)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">7</button>
+            <button onclick="app.keyPress(8)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">8</button>
+            <button onclick="app.keyPress(9)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">9</button>
+            
+            <!-- Bottom Row -->
+            <button onclick="app.keyBackspace()" class="h-12 flex items-center justify-center bg-zinc-800/50 rounded-lg hover:bg-zinc-700/50 text-red-400">
+                <!-- Backspace Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+            </button>
+            <button onclick="app.keyPress(0)" class="h-12 text-xl font-medium bg-zinc-800 rounded-lg hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200">0</button>
+            <button id="submit-btn" onclick="app.submitScore()" disabled class="h-12 flex items-center justify-center rounded-lg font-bold text-white bg-zinc-800/50 text-zinc-600 cursor-not-allowed transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- RESET MODAL -->
+    <div id="reset-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm fade-in">
+        <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full mx-4 transform scale-100">
+            <div class="flex items-center space-x-3 mb-4 text-amber-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                <h3 class="text-lg font-bold text-white">Reset Game Data?</h3>
+            </div>
+            <p class="text-zinc-400 text-sm mb-6 leading-relaxed">This will clear all hand history, reset your performance chart, and delete your current session statistics. This action cannot be undone.</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="app.toggleResetModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-300 hover:bg-zinc-800 transition-colors">Cancel</button>
+                <button onclick="app.confirmReset()" class="px-4 py-2 rounded-lg text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-900/20 transition-all hover:scale-105 active:scale-95">Reset Everything</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Logic Namespace ---
+        const app = {
+            // State
+            hands: [],
+            nextPrediction: null, // 'Player' | 'Banker' | null
+            keypadInput: '',
+            isPanelOpen: false,
+            isHistoryExpanded: false,
+            
+            // Constants
+            WINNER: { PLAYER: 'Player', BANKER: 'Banker', TIE: 'Tie' },
+            RESULT: { WIN: 'Win', LOSS: 'Loss', PUSH: 'Push', PENDING: 'Pending' },
+            
+            // --- Initialization ---
+            init: function() {
+                this.renderChart();
+                this.renderUI();
+                
+                // Window resize listener for responsive chart
+                window.addEventListener('resize', () => {
+                   this.renderChart(); 
+                });
+            },
+
+            // --- Logic Methods ---
+            
+            handleScoreSubmit: function(playerScore, bankerScore) {
+                // 1. Determine Actual Winner
+                let actualWinner = this.WINNER.TIE;
+                if (playerScore > bankerScore) actualWinner = this.WINNER.PLAYER;
+                else if (bankerScore > playerScore) actualWinner = this.WINNER.BANKER;
+
+                // 2. Evaluate Previous Prediction
+                let result = this.RESULT.PENDING;
+                let unitsChanged = 0;
+
+                if (this.nextPrediction) {
+                    if (actualWinner === this.WINNER.TIE) {
+                        result = this.RESULT.PUSH;
+                        unitsChanged = 0;
+                    } else if (actualWinner === this.nextPrediction) {
+                        result = this.RESULT.WIN;
+                        unitsChanged = 1;
+                    } else {
+                        result = this.RESULT.LOSS;
+                        unitsChanged = -1;
+                    }
+                } else {
+                    result = this.RESULT.PUSH;
+                }
+
+                // 3. Calc Running Total
+                const lastTotal = this.hands.length > 0 ? this.hands[this.hands.length - 1].runningTotal : 0;
+                const newTotal = lastTotal + unitsChanged;
+
+                // 4. Strategy for NEXT hand
+                const delta = Math.abs(playerScore - bankerScore);
+                let strategyPrediction = null;
+
+                if (actualWinner !== this.WINNER.TIE) {
+                    if (delta >= 5) {
+                        strategyPrediction = actualWinner; // Follow
+                    } else {
+                        // Chop (Opposite)
+                        strategyPrediction = actualWinner === this.WINNER.PLAYER ? this.WINNER.BANKER : this.WINNER.PLAYER;
+                    }
+                } else {
+                    // Tie: Hold prediction
+                    strategyPrediction = this.nextPrediction;
+                }
+
+                const newHand = {
+                    id: this.hands.length + 1,
+                    playerScore,
+                    bankerScore,
+                    winner: actualWinner,
+                    prediction: this.nextPrediction,
+                    result,
+                    runningTotal: newTotal,
+                    delta
+                };
+
+                this.hands.push(newHand);
+                this.nextPrediction = strategyPrediction;
+
+                this.renderChart();
+                this.renderUI();
+            },
+
+            // --- Keypad Handling ---
+            
+            togglePanel: function() {
+                this.isPanelOpen = !this.isPanelOpen;
+                const panel = document.getElementById('keypad-panel');
+                const backdrop = document.getElementById('keypad-backdrop');
+                const menuBtn = document.getElementById('menu-btn');
+                
+                if (this.isPanelOpen) {
+                    panel.classList.remove('hidden');
+                    panel.classList.add('flex');
+                    backdrop.classList.remove('hidden');
+                    // Style Button Active
+                    menuBtn.className = "p-2 rounded-lg transition-all active:scale-95 bg-zinc-800 text-white";
+                    this.keyClear();
+                } else {
+                    panel.classList.add('hidden');
+                    panel.classList.remove('flex');
+                    backdrop.classList.add('hidden');
+                    // Style Button Inactive
+                    menuBtn.className = "p-2 rounded-lg transition-all active:scale-95 text-zinc-500 hover:text-white hover:bg-zinc-800";
+                }
+            },
+
+            keyPress: function(num) {
+                if (this.keypadInput.length < 2) {
+                    this.keypadInput += num.toString();
+                    this.updateKeypadDisplay();
+                }
+            },
+
+            keyClear: function() {
+                this.keypadInput = '';
+                this.updateKeypadDisplay();
+            },
+
+            keyBackspace: function() {
+                if (this.keypadInput.length > 0) {
+                    this.keypadInput = this.keypadInput.slice(0, -1);
+                    this.updateKeypadDisplay();
+                }
+            },
+
+            updateKeypadDisplay: function() {
+                const p = document.getElementById('p-score');
+                const b = document.getElementById('b-score');
+                const btn = document.getElementById('submit-btn');
+                
+                const val1 = this.keypadInput[0];
+                const val2 = this.keypadInput[1];
+
+                p.textContent = val1 || '0';
+                p.className = val1 ? "font-bold text-blue-500" : "font-bold text-zinc-700";
+                
+                b.textContent = val2 || '0';
+                b.className = val2 ? "font-bold text-red-500" : "font-bold text-zinc-700";
+
+                // Validation
+                const isComplete = this.keypadInput.length === 2;
+                const isTie = isComplete && val1 === val2;
+
+                if (isComplete && !isTie) {
+                    btn.disabled = false;
+                    btn.className = "h-12 flex items-center justify-center rounded-lg transition-all font-bold text-white shadow-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-emerald-900/20";
+                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+                } else if (isTie) {
+                    btn.disabled = true;
+                    btn.className = "h-12 flex items-center justify-center rounded-lg font-bold text-white bg-zinc-800/50 text-zinc-600 cursor-not-allowed";
+                    btn.innerHTML = `<span class="text-xs font-bold text-rose-500">NO TIE</span>`;
+                } else {
+                    btn.disabled = true;
+                    btn.className = "h-12 flex items-center justify-center rounded-lg font-bold text-white bg-zinc-800/50 text-zinc-600 cursor-not-allowed";
+                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+                }
+            },
+
+            submitScore: function() {
+                if (this.keypadInput.length !== 2) return;
+                const p = parseInt(this.keypadInput[0]);
+                const b = parseInt(this.keypadInput[1]);
+                if (p === b) return;
+                this.handleScoreSubmit(p, b);
+                this.togglePanel();
+            },
+
+            // --- UI Updates ---
+
+            toggleHistory: function() {
+                this.isHistoryExpanded = !this.isHistoryExpanded;
+                const container = document.getElementById('history-container');
+                const chevron = document.getElementById('history-chevron');
+                
+                if (this.isHistoryExpanded) {
+                    container.classList.remove('h-40');
+                    container.classList.add('h-[60vh]');
+                    chevron.innerHTML = '<path d="m6 9 6 6 6-6"/>';
+                } else {
+                    container.classList.add('h-40');
+                    container.classList.remove('h-[60vh]');
+                    chevron.innerHTML = '<path d="m18 15-6-6-6 6"/>';
+                }
+            },
+
+            toggleResetModal: function() {
+                document.getElementById('reset-modal').classList.toggle('hidden');
+            },
+
+            confirmReset: function() {
+                this.hands = [];
+                this.nextPrediction = null;
+                this.toggleResetModal();
+                this.renderChart();
+                this.renderUI();
+            },
+
+            renderUI: function() {
+                // Prediction Indicator
+                const ind = document.getElementById('next-bet-indicator');
+                const txt = document.getElementById('next-bet-text');
+                
+                if (this.nextPrediction === this.WINNER.PLAYER) {
+                    ind.className = "flex items-center justify-center w-10 h-10 rounded-lg border-2 shadow-lg transition-all duration-300 bg-blue-500/10 border-blue-500 text-blue-500 shadow-blue-500/10";
+                    txt.textContent = "P";
+                } else if (this.nextPrediction === this.WINNER.BANKER) {
+                    ind.className = "flex items-center justify-center w-10 h-10 rounded-lg border-2 shadow-lg transition-all duration-300 bg-red-500/10 border-red-500 text-red-500 shadow-red-500/10";
+                    txt.textContent = "B";
+                } else {
+                    ind.className = "flex items-center justify-center w-10 h-10 rounded-lg border-2 shadow-lg transition-all duration-300 bg-zinc-800/50 border-zinc-700 text-zinc-700";
+                    txt.textContent = "-";
+                }
+
+                // History
+                const list = document.getElementById('history-list');
+                if (this.hands.length === 0) {
+                    list.innerHTML = '<div class="text-center text-zinc-600 py-8 text-sm italic">Waiting for first hand...</div>';
+                } else {
+                    let html = '';
+                    [...this.hands].reverse().forEach(h => {
+                        // Winner
+                        let winHtml = '';
+                        if (h.winner === this.WINNER.PLAYER) winHtml = `<span class="font-bold text-blue-500">P:${h.playerScore}</span><span class="text-zinc-600">-</span><span class="font-bold text-zinc-600">B:${h.bankerScore}</span>`;
+                        else if (h.winner === this.WINNER.BANKER) winHtml = `<span class="font-bold text-zinc-600">P:${h.playerScore}</span><span class="text-zinc-600">-</span><span class="font-bold text-red-500">B:${h.bankerScore}</span>`;
+                        else winHtml = `<span class="font-bold text-zinc-500">P:${h.playerScore}</span><span class="text-zinc-600">-</span><span class="font-bold text-zinc-500">B:${h.bankerScore}</span>`;
+
+                        // Prediction
+                        let predHtml = '<span class="text-zinc-600 text-xs">-</span>';
+                        if (h.prediction) {
+                            const color = h.prediction === this.WINNER.PLAYER ? 'bg-blue-900/30 text-blue-400' : 'bg-red-900/30 text-red-400';
+                            predHtml = `<div class="flex items-center justify-center space-x-1"><span class="text-zinc-500 text-xs">Bet:</span><span class="font-bold text-xs px-1.5 py-0.5 rounded ${color}">${h.prediction === this.WINNER.PLAYER ? 'P' : 'B'}</span></div>`;
+                        }
+
+                        // Result
+                        let resHtml = '<span class="text-zinc-600">...</span>';
+                        if (h.result === this.RESULT.WIN) resHtml = `<span class="text-emerald-500 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Win</span>`;
+                        else if (h.result === this.RESULT.LOSS) resHtml = `<span class="text-rose-500 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Loss</span>`;
+                        else if (h.result === this.RESULT.PUSH) resHtml = `<span class="text-zinc-500">Push</span>`;
+
+                        // Total
+                        const totalColor = h.runningTotal > 0 ? 'text-emerald-400' : h.runningTotal < 0 ? 'text-rose-400' : 'text-zinc-400';
+                        const totalTxt = (h.runningTotal > 0 ? '+' : '') + h.runningTotal;
+
+                        html += `
+                            <div class="grid grid-cols-12 gap-2 items-center p-2 rounded hover:bg-zinc-800/50 text-sm border border-transparent hover:border-zinc-800 transition-colors slide-up">
+                                <div class="col-span-1 text-zinc-500 font-mono text-xs">#${h.id}</div>
+                                <div class="col-span-4 flex items-center space-x-2 font-mono">${winHtml}<span class="text-xs font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded ml-2">Δ${h.delta}</span></div>
+                                <div class="col-span-3 text-center">${predHtml}</div>
+                                <div class="col-span-2 text-center font-bold">${resHtml}</div>
+                                <div class="col-span-2 text-right font-mono font-bold ${totalColor}">${totalTxt}</div>
+                            </div>
+                        `;
+                    });
+                    list.innerHTML = html;
+                }
+            },
+
+            // --- Custom SVG Chart Engine ---
+            renderChart: function() {
+                const svg = document.getElementById('main-chart');
+                const container = document.getElementById('chart-container');
+                const width = container.clientWidth - 16; // minus padding
+                const height = container.clientHeight - 16; 
+                
+                // Config (Fixed Scale)
+                const xMax = 75;
+                const yMin = -20;
+                const yMax = 20;
+                const yRange = yMax - yMin;
+
+                // Clear
+                svg.innerHTML = '';
+
+                // Helper: Data to Coords
+                const getX = (val) => (val / xMax) * width;
+                const getY = (val) => height - ((val - yMin) / yRange) * height;
+
+                // 1. Draw Grid Lines (Y Axis)
+                for (let i = yMin; i <= yMax; i += 5) {
+                    const y = getY(i);
+                    const isZero = i === 0;
+                    const color = isZero ? '#52525b' : '#27272a';
+                    const dash = isZero ? '5,5' : '';
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', 0);
+                    line.setAttribute('y1', y);
+                    line.setAttribute('x2', width);
+                    line.setAttribute('y2', y);
+                    line.setAttribute('stroke', color);
+                    line.setAttribute('stroke-width', isZero ? 2 : 1);
+                    if (isZero) line.setAttribute('stroke-dasharray', '5,5');
+                    svg.appendChild(line);
+                }
+
+                // 2. Draw Grid Lines (X Axis)
+                for (let i = 0; i <= xMax; i += 10) {
+                    const x = getX(i);
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', x);
+                    line.setAttribute('y1', 0);
+                    line.setAttribute('x2', x);
+                    line.setAttribute('y2', height);
+                    line.setAttribute('stroke', '#27272a');
+                    line.setAttribute('stroke-width', 1);
+                    svg.appendChild(line);
+                }
+
+                // 3. Draw Data Line
+                if (this.hands.length > 0) {
+                    let pathD = '';
+                    
+                    this.hands.forEach((h, i) => {
+                        const x = getX(h.id);
+                        const y = getY(h.runningTotal);
+                        if (i === 0) pathD += `M ${x} ${y}`;
+                        else pathD += ` L ${x} ${y}`;
+                    });
+
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', pathD);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('stroke', '#fbbf24');
+                    path.setAttribute('stroke-width', 3);
+                    path.setAttribute('stroke-linejoin', 'round');
+                    path.setAttribute('stroke-linecap', 'round');
+                    svg.appendChild(path);
+
+                    // Add Interactive Overlay for Tooltips
+                    this.hands.forEach(h => {
+                         const x = getX(h.id);
+                         const y = getY(h.runningTotal);
+                         
+                         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                         circle.setAttribute('cx', x);
+                         circle.setAttribute('cy', y);
+                         circle.setAttribute('r', 6);
+                         circle.setAttribute('fill', 'transparent'); // Invisible target
+                         circle.setAttribute('class', 'hover:fill-white/20 cursor-crosshair');
+                         
+                         // Tooltip Logic
+                         circle.onmouseenter = (e) => {
+                             const tt = document.getElementById('chart-tooltip');
+                             const rect = container.getBoundingClientRect();
+                             tt.style.left = (x + 10) + 'px';
+                             tt.style.top = (y - 40) + 'px';
+                             tt.classList.remove('opacity-0');
+                             
+                             document.getElementById('tooltip-title').innerText = `Hand #${h.id}`;
+                             const sign = h.runningTotal > 0 ? '+' : '';
+                             document.getElementById('tooltip-value').innerText = `Total: ${sign}${h.runningTotal}`;
+                         };
+                         circle.onmouseleave = () => {
+                             document.getElementById('chart-tooltip').classList.add('opacity-0');
+                         };
+
+                         svg.appendChild(circle);
+                    });
+                }
+            }
+        };
+
+        // Start App
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
